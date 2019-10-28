@@ -36,7 +36,10 @@ import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.edge.EdgeDriver;
 import org.openqa.selenium.ie.InternetExplorerDriver;
+import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.opera.OperaDriver;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
@@ -161,7 +164,7 @@ public class OperationHelper {
 				}
 
 				if (statusReturn && statusReturn1) {
-					Thread.sleep(1000);
+					Thread.sleep(500);
 					break;
 				}
 				Thread.sleep(100);
@@ -177,7 +180,20 @@ public class OperationHelper {
 			JavascriptExecutor js = (JavascriptExecutor) driver;
 			String readyState = (String) js.executeScript("return document.readyState");
 			if (readyState.equals("complete")) {
-				Thread.sleep(1000);
+				Thread.sleep(500);
+				break;
+			}
+			Thread.sleep(100);
+		}
+	}
+
+	public static void waitForWebLoadSlowly() throws InterruptedException {
+		while (true) // Handle timeout somewhere
+		{
+			JavascriptExecutor js = (JavascriptExecutor) driver;
+			String readyState = (String) js.executeScript("return document.readyState");
+			if (readyState.equals("complete")) {
+				Thread.sleep(10000);
 				break;
 			}
 			Thread.sleep(100);
@@ -200,6 +216,22 @@ public class OperationHelper {
 		case "chrome":
 			WebDriverManager.chromedriver().setup();
 			driver = new ChromeDriver();
+			driver.manage().window().maximize();
+			driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
+			driver.manage().deleteAllCookies();
+			waitForAjax();
+			break;
+		case "edge":
+			WebDriverManager.edgedriver().setup();
+			driver = new EdgeDriver();
+			driver.manage().window().maximize();
+			driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
+			driver.manage().deleteAllCookies();
+			waitForAjax();
+			break;
+		case "opera":
+			WebDriverManager.operadriver().setup();
+			driver = new OperaDriver();
 			driver.manage().window().maximize();
 			driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
 			driver.manage().deleteAllCookies();
@@ -376,9 +408,8 @@ public class OperationHelper {
 					case "Go to URL":
 						String url = stepCurrent.substring(stepCurrent.indexOf("http"), stepCurrent.length() - 1);
 						try {
-							waitForAjax();
-							Thread.sleep(500);
 							driver.get(url);
+							waitForWebLoadSlowly();
 						} catch (Exception e) {
 							error = "Pending: wrong " + url;
 							e.printStackTrace();
@@ -389,7 +420,7 @@ public class OperationHelper {
 								stepCurrent.length() - 1);
 						try {
 							driver.navigate().to(urlNavigate);
-							Thread.sleep(1000);
+							waitForAjax();
 						} catch (Exception e) {
 							error = "Pending: wrong " + urlNavigate;
 							e.printStackTrace();
@@ -406,7 +437,6 @@ public class OperationHelper {
 							error = "Pending: wrong " + elementKey + " element";
 							e.printStackTrace();
 						}
-						Thread.sleep(500);
 						break;
 					case "Scroll Down":
 						String elementKeyScroll = arrBreak[1];
@@ -424,6 +454,7 @@ public class OperationHelper {
 					case "Input into":
 						String elementPlace = arrBreak[1];
 						try {
+							waitForWebState();
 							driver.findElement(getIdentifier(elementPlace)).click();
 							String elementInput = arrBreak[3];
 							if (elementInput.equals("blank")) {
@@ -489,18 +520,6 @@ public class OperationHelper {
 							e.printStackTrace();
 						}
 						break;
-					case "Wait for":
-						driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
-						waitForWebState();
-						System.out.println(arrBreak[1]);
-						try {
-							driver.findElements(getIdentifier(arrBreak[1]));
-						} catch (Exception e) {
-							sheet.getRow(row).getCell(resultInex)
-									.setCellValue("Pending: wrong " + arrBreak[1] + " element");
-							e.printStackTrace();
-						}
-						break;
 					case "Set checkbox":
 						String elementcb = arrBreak[1];
 						try {
@@ -513,13 +532,13 @@ public class OperationHelper {
 					case "Verify check-box":
 						String elementUncheck = arrBreak[1];
 						try {
+							boolean verifyCheck = false;
 							WebElement checkBox = driver.findElement(getIdentifier(elementUncheck));
 							if (!checkBox.isSelected()) {
 								checkBox.click();
 								break;
-							} else if (checkBox.isSelected()) {
-								break;
-							} else {
+							}
+							if (verifyCheck) {
 								error = "Check box invisible";
 							}
 						} catch (Exception e) {
@@ -631,10 +650,22 @@ public class OperationHelper {
 						break;
 					case "Click on drop-down":
 						try {
-							Thread.sleep(300);
+							Thread.sleep(100);
 							WebElement firstOptions = driver.findElement(getIdentifier(arrBreak[1]));
 							firstOptions.click();
+							Thread.sleep(100);
 							firstOptions.sendKeys(Keys.ENTER);
+						} catch (Exception e) {
+							e.printStackTrace();
+							error = "Pending: wrong " + arrBreak[1] + " element";
+						}
+						break;
+					case "Move to":
+						try {
+							Thread.sleep(300);
+							WebElement elementMoveTo = driver.findElement(getIdentifier(arrBreak[1]));
+							Actions action = new Actions(driver);
+							action.moveToElement(elementMoveTo).click().perform();
 						} catch (Exception e) {
 							e.printStackTrace();
 							error = "Pending: wrong " + arrBreak[1] + " element";
@@ -675,6 +706,7 @@ public class OperationHelper {
 							String acutualString = arrResult[3];
 							try {
 								boolean check = false;
+								Thread.sleep(1000);
 								List<WebElement> lst = driver.findElements(getIdentifier(elementFind));
 								for (WebElement webElement : lst) {
 									String acutalResult = webElement.getText();
@@ -682,9 +714,11 @@ public class OperationHelper {
 									if (!acutalResult.isEmpty()) {
 										if (acutalResult.equals(acutualString)) {
 											status = "PASSED";
-											check =true;
+											check = true;
 											break;
 										}
+									}else {
+										continue;
 									}
 								}
 								if (!check) {
@@ -695,7 +729,6 @@ public class OperationHelper {
 								e.printStackTrace();
 								error = "Pending: wrong " + elementFind + " element";
 							}
-							Thread.sleep(500);
 							break;
 						case "Should see message invalid":
 							waitForWebState();
@@ -714,7 +747,7 @@ public class OperationHelper {
 							}
 							break;
 						case "Should see title is":
-							waitForWebState();
+							waitForAjax();
 							String acctualTitle = driver.getTitle();
 							if (acctualTitle.equals(arrResult[1])) {
 								status = "PASSED";
@@ -776,7 +809,7 @@ public class OperationHelper {
 		switch (status) {
 		case "PASSED":
 			font.setColor(HSSFColor.WHITE.index);
-			style.setFillForegroundColor(HSSFColor.LIGHT_BLUE.index);
+			style.setFillForegroundColor(HSSFColor.LAVENDER.index);
 			style.setFillPattern(HSSFCellStyle.SOLID_FOREGROUND);
 			style.setFont(font);
 			cell.setCellStyle(style);

@@ -20,3 +20,9 @@ https://github.com/assertthat/selenium-shutterbug/wiki/Examples-of-usage
 					//error = "";
 					break;
 				}
+				
+5/ element not reacble
+we should not click() , senkey() on <p>, <div> isnstead we should do on <input>
+Link refer: https://stackoverflow.com/questions/49864965/org-openqa-selenium-elementnotinteractableexception-element-is-not-reachable-by
+
+6/ khi code ko chay vao toi Lis<Webelement> nen xem lai cai xpath mac du no dung nhung cung co truong hop no ko dung
